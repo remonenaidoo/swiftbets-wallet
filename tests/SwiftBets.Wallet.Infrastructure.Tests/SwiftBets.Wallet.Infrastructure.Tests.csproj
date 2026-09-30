@@ -6,9 +6,10 @@
   <ItemGroup>
     <PackageReference Include="xunit.v3" />
     <PackageReference Include="Shouldly" />
-    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
     <PackageReference Include="SwiftBets.BuildingBlocks.Testing" />
-    <ProjectReference Include="../../src/SwiftBets.Wallet.Api/SwiftBets.Wallet.Api.csproj" />
+    <PackageReference Include="Dapper" />
+    <ProjectReference Include="../../src/SwiftBets.Wallet.Infrastructure/SwiftBets.Wallet.Infrastructure.csproj" />
+    <ProjectReference Include="../../src/SwiftBets.Wallet.Migrator/SwiftBets.Wallet.Migrator.csproj" />
   </ItemGroup>
   <ItemGroup>
     <Using Include="Xunit" />

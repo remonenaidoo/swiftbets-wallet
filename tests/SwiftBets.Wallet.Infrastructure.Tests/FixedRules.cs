@@ -8,5 +8,5 @@ internal sealed class FixedRules(GamblingRules rules) : IGamblingRules
 {
     public static FixedRules None { get; } = new(GamblingRules.None);
 
-    public GamblingRules For(Guid accountId) => rules;
+    public GamblingRules For(Guid userId) => rules;
 }

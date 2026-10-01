@@ -17,4 +17,7 @@ public enum DriftKind : byte
 
     /// <summary>All entries across the ledger do not sum to zero.</summary>
     LedgerTotal = 5,
+
+    /// <summary>A punter's bonus balance differs from the sum of its bonus-bucket entries.</summary>
+    BonusBalance = 6,
 }

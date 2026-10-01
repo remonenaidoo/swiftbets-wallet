@@ -48,7 +48,7 @@ internal sealed class SqlWalletTransaction(SqlConnection connection, SqlTransact
         {
             await connection.ExecuteAsync(Sql.Get("Wallet.InsertReservation"), new
             {
-                reservation.ReservationId, reservation.AccountId, reservation.Amount, reservation.Currency, reservation.Reference, State = (byte)reservation.State, Now = now,
+                reservation.ReservationId, reservation.AccountId, reservation.Amount, reservation.Currency, reservation.Reference, State = (byte)reservation.State, Purpose = (byte)reservation.Purpose, Now = now,
             }, transaction);
         }
         else if (reservation is not null)

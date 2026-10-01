@@ -23,6 +23,8 @@ internal static class WalletReplies
         AccountId = account.AccountId.ToString(),
         Available = new Money { MinorUnits = account.Available, Currency = account.Currency },
         Reserved = new Money { MinorUnits = account.Reserved, Currency = account.Currency },
+        Bonus = new Money { MinorUnits = account.Bonus, Currency = account.Currency },
+        UserId = account.UserId.ToString(),
     };
 
     public static ProtoReservation Map(DomainReservation reservation) => new()

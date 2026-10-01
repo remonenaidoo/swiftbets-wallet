@@ -50,7 +50,16 @@ public sealed class PostingRunner(IWalletStore store)
             return new WalletOutcome(false, null, existing.PostingId, account, reservation);
         }
 
-        var result = await apply(transaction);
+        (WalletFailure? Failure, Posting? Posting, IReadOnlyList<Account> Changed, Reservation? Reservation, bool IsNewReservation) result;
+        try
+        {
+            result = await apply(transaction);
+        }
+        catch (WalletRefusedException refused)
+        {
+            return WalletOutcome.Failed(refused.Failure, refused.Message);
+        }
+
         if (result.Failure is { } failure)
         {
             return WalletOutcome.Failed(failure);

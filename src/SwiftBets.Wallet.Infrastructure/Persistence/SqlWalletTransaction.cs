@@ -3,6 +3,7 @@ using Microsoft.Data.SqlClient;
 using SwiftBets.BuildingBlocks.Persistence;
 using SwiftBets.Wallet.Application.Ports;
 using SwiftBets.Wallet.Domain;
+using SwiftBets.Wallet.Domain.ResponsibleGambling;
 
 namespace SwiftBets.Wallet.Infrastructure.Persistence;
 
@@ -59,7 +60,34 @@ internal sealed class SqlWalletTransaction(SqlConnection connection, SqlTransact
         await connection.ExecuteAsync(Sql.Get("Wallet.UpdateAccount"), changedAccounts.Select(a => new { a.AccountId, a.Available, a.Reserved }), transaction);
     }
 
+    public async Task<SpendCounters> GetSpendAsync(Guid accountId, DateTimeOffset now)
+    {
+        var rows = (await connection.QueryAsync<SpendRow>(Sql.Get("Spend.Get"), Periods(accountId, now), transaction)).ToDictionary(r => (SpendPeriod)r.Period, r => r.ToTotals());
+        return new SpendCounters(
+            rows.GetValueOrDefault(SpendPeriod.Day, SpendTotals.Zero),
+            rows.GetValueOrDefault(SpendPeriod.Week, SpendTotals.Zero),
+            rows.GetValueOrDefault(SpendPeriod.Month, SpendTotals.Zero));
+    }
+
+    public Task AddSpendAsync(Guid accountId, DateTimeOffset at, long staked, long won, long deposited)
+    {
+        var parameters = new DynamicParameters(Periods(accountId, at));
+        parameters.AddDynamicParams(new { Staked = staked, Won = won, Deposited = deposited });
+        return connection.ExecuteAsync(Sql.Get("Spend.Add"), parameters, transaction);
+    }
+
+    public Task<DateTimeOffset> ReservedAtAsync(Guid reservationId) =>
+        connection.QuerySingleAsync<DateTimeOffset>(Sql.Get("Wallet.ReservedAt"), new { ReservationId = reservationId }, transaction);
+
     public Task CommitAsync() => transaction.CommitAsync();
+
+    private static object Periods(Guid accountId, DateTimeOffset at) => new
+    {
+        AccountId = accountId,
+        Day = SpendPeriods.StartOf(SpendPeriod.Day, at).ToDateTime(TimeOnly.MinValue),
+        Week = SpendPeriods.StartOf(SpendPeriod.Week, at).ToDateTime(TimeOnly.MinValue),
+        Month = SpendPeriods.StartOf(SpendPeriod.Month, at).ToDateTime(TimeOnly.MinValue),
+    };
 
     public async ValueTask DisposeAsync()
     {

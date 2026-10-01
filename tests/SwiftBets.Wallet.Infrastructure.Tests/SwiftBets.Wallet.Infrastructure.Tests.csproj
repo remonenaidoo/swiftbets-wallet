@@ -8,6 +8,7 @@
     <PackageReference Include="Shouldly" />
     <PackageReference Include="SwiftBets.BuildingBlocks.Testing" />
     <PackageReference Include="Dapper" />
+    <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" />
     <ProjectReference Include="../../src/SwiftBets.Wallet.Infrastructure/SwiftBets.Wallet.Infrastructure.csproj" />
     <ProjectReference Include="../../src/SwiftBets.Wallet.Migrator/SwiftBets.Wallet.Migrator.csproj" />
   </ItemGroup>

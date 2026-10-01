@@ -10,4 +10,6 @@ public enum WalletFailure
     CurrencyMismatch,
     IdempotencyConflict,
     InvalidAmount,
+    LimitExceeded,
+    AccountRestricted,
 }

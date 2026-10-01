@@ -63,7 +63,7 @@ public sealed class LedgerReconciliationTests(SqlServerFixture sql)
     public async Task Reservation_released_without_returning_the_funds_is_reported()
     {
         var wallet = await WalletAsync();
-        var reservation = (await new ReserveFundsHandler(new PostingRunner(wallet.Store)).HandleAsync("held_reserve", Punter, 1_500, "ZAR", "held")).Reservation!;
+        var reservation = (await new ReserveFundsHandler(new PostingRunner(wallet.Store), FixedRules.None, TimeProvider.System).HandleAsync("held_reserve", Punter, 1_500, "ZAR", "held")).Reservation!;
         await wallet.ExecuteAsync("UPDATE wallet.Reservations SET State = 3 WHERE ReservationId = @Id", new { Id = reservation.ReservationId });
 
         var report = await wallet.Handler.HandleAsync(CancellationToken.None);
@@ -76,7 +76,7 @@ public sealed class LedgerReconciliationTests(SqlServerFixture sql)
     public async Task Postings_committed_while_reconciling_never_show_as_drift()
     {
         var wallet = await WalletAsync();
-        var transfers = new TransferHandler(new PostingRunner(wallet.Store));
+        var transfers = new TransferHandler(new PostingRunner(wallet.Store), FixedRules.None, TimeProvider.System);
         var writes = Task.WhenAll(Enumerable.Range(0, 40).Select(i => transfers.CreditAsync($"race_{i}", Punter, 100, "ZAR", "race")));
 
         var reports = await Task.WhenAll(Enumerable.Range(0, 5).Select(_ => wallet.Handler.HandleAsync(CancellationToken.None)));
@@ -102,10 +102,10 @@ public sealed class LedgerReconciliationTests(SqlServerFixture sql)
         public async Task ActivityAsync()
         {
             var runner = new PostingRunner(Store);
-            var reservation = (await new ReserveFundsHandler(runner).HandleAsync("a_reserve", Punter, 2_000, "ZAR", "a")).Reservation!;
+            var reservation = (await new ReserveFundsHandler(runner, FixedRules.None, TimeProvider.System).HandleAsync("a_reserve", Punter, 2_000, "ZAR", "a")).Reservation!;
             await new SettleReservationHandler(runner, Store).CaptureAsync("a_capture", reservation.ReservationId, CancellationToken.None);
-            await new TransferHandler(runner).CreditAsync("a_win", Punter, 5_000, "ZAR", "a");
-            await new TransferHandler(runner).DebitAsync("a_clawback", Punter, 1_000, "ZAR", "a");
+            await new TransferHandler(runner, FixedRules.None, TimeProvider.System).CreditAsync("a_win", Punter, 5_000, "ZAR", "a");
+            await new TransferHandler(runner, FixedRules.None, TimeProvider.System).DebitAsync("a_clawback", Punter, 1_000, "ZAR", "a");
         }
 
         public async Task ExecuteAsync(string statement, object? parameters = null)

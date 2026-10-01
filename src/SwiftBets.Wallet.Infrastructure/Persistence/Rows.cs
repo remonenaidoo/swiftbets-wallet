@@ -1,4 +1,5 @@
 using SwiftBets.Wallet.Domain;
+using SwiftBets.Wallet.Domain.ResponsibleGambling;
 
 namespace SwiftBets.Wallet.Infrastructure.Persistence;
 
@@ -13,3 +14,8 @@ internal sealed record ReservationRow(Guid ReservationId, Guid AccountId, long A
 }
 
 internal sealed record PostingRow(Guid PostingId, byte Kind, Guid AccountId, long Amount, Guid? ReservationId);
+
+internal sealed record SpendRow(byte Period, long Staked, long Won, long Deposited)
+{
+    public SpendTotals ToTotals() => new(Staked, Won, Deposited);
+}

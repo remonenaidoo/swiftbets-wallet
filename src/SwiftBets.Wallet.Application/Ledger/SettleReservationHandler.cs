@@ -32,6 +32,12 @@ public sealed class SettleReservationHandler(PostingRunner runner, IWalletStore 
                 return (failure, null, [], null, false);
             }
 
+            // A released stake was never at risk, so it comes off the totals of the periods it was placed in.
+            if (!capture && account.Kind == AccountKind.Punter)
+            {
+                await transaction.AddSpendAsync(account.AccountId, await transaction.ReservedAtAsync(reservationId), -reservation.Amount, 0, 0);
+            }
+
             IReadOnlyList<LedgerEntry> entries = capture
                 ? [new(account.AccountId, Bucket.Reserved, -reservation.Amount), new(WellKnownAccounts.House, Bucket.Available, reservation.Amount)]
                 : [new(account.AccountId, Bucket.Reserved, -reservation.Amount), new(account.AccountId, Bucket.Available, reservation.Amount)];

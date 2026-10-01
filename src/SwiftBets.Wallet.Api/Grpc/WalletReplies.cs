@@ -10,12 +10,12 @@ internal static class WalletReplies
 {
     public static ReservationReply Reservation(WalletOutcome outcome) =>
         outcome.Failure is { } failure
-            ? new ReservationReply { Failure = Failure(failure) }
+            ? new ReservationReply { Failure = Failure(failure, outcome.Detail) }
             : new ReservationReply { WasApplied = outcome.WasApplied, Reservation = Map(outcome.Reservation!) };
 
     public static PostingReply Posting(WalletOutcome outcome) =>
         outcome.Failure is { } failure
-            ? new PostingReply { Failure = Failure(failure) }
+            ? new PostingReply { Failure = Failure(failure, outcome.Detail) }
             : new PostingReply { WasApplied = outcome.WasApplied, Posting = new SwiftBets.Contracts.Grpc.Wallet.V1.Posting { PostingId = outcome.PostingId.ToString(), Balance = Balance(outcome.Account!) } };
 
     public static Balance Balance(Account account) => new()
@@ -39,7 +39,7 @@ internal static class WalletReplies
         },
     };
 
-    public static SwiftBets.Contracts.Grpc.Wallet.V1.WalletFailure Failure(Domain.WalletFailure failure) => new()
+    public static SwiftBets.Contracts.Grpc.Wallet.V1.WalletFailure Failure(Domain.WalletFailure failure, string? detail = null) => new()
     {
         Code = failure switch
         {
@@ -50,8 +50,10 @@ internal static class WalletReplies
             Domain.WalletFailure.InvalidState => WalletFailureCode.InvalidState,
             Domain.WalletFailure.CurrencyMismatch => WalletFailureCode.CurrencyMismatch,
             Domain.WalletFailure.IdempotencyConflict => WalletFailureCode.IdempotencyConflict,
+            Domain.WalletFailure.LimitExceeded => WalletFailureCode.LimitExceeded,
+            Domain.WalletFailure.AccountRestricted => WalletFailureCode.AccountRestricted,
             _ => WalletFailureCode.Unspecified,
         },
-        Message = failure.ToString(),
+        Message = detail ?? failure.ToString(),
     };
 }

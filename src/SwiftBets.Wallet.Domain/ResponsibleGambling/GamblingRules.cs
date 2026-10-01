@@ -23,7 +23,7 @@ public enum BlockKind
 }
 
 /// <summary>A limit as compliance published it: Amount applies now, PendingAmount (null: no limit) from PendingEffectiveAt.</summary>
-public sealed record SpendLimit(SpendKind Kind, SpendPeriod Period, long Amount, long? PendingAmount, DateTimeOffset? PendingEffectiveAt)
+public sealed record SpendLimit(SpendKind Kind, SpendPeriod Period, long Amount, long? PendingAmount, DateTimeOffset? PendingEffectiveAt, string Currency = "ZAR")
 {
     /// <summary>The cap at <paramref name="now"/>, or null when a due removal has lifted it.</summary>
     public long? CapAt(DateTimeOffset now) => PendingEffectiveAt is { } due && due <= now ? PendingAmount : Amount;
@@ -38,4 +38,7 @@ public sealed record SpendBlock(BlockKind Kind, DateTimeOffset StartsAt, DateTim
 public sealed record GamblingRules(IReadOnlyList<SpendLimit> Limits, IReadOnlyList<SpendBlock> Blocks)
 {
     public static GamblingRules None { get; } = new([], []);
+
+    /// <summary>The rules as they bear on one currency account: blocks apply to all, a limit only in its own currency.</summary>
+    public GamblingRules In(string currency) => new([.. Limits.Where(l => l.Currency == currency)], Blocks);
 }

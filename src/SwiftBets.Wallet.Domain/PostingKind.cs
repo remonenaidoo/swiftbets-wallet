@@ -8,4 +8,8 @@ public enum PostingKind : byte
     Release = 4,
     Credit = 5,
     Debit = 6,
+    Deposit = 7,
+    WithdrawalHold = 8,
+    WithdrawalPaid = 9,
+    WithdrawalReturned = 10,
 }

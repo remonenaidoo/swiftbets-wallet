@@ -23,6 +23,10 @@ public static class SpendPolicy
         Blocked(rules, now, BlockKind.Exclusion, BlockKind.NoDeposits)
         ?? Exceeds(rules, counters, SpendKind.Deposit, amount, now, t => t.Deposited);
 
+    /// <summary>Only an operator's withdrawal block stops a withdrawal; an excluded customer can always take their money out.</summary>
+    public static SpendRefusal? CheckWithdrawal(GamblingRules rules, DateTimeOffset now) =>
+        Blocked(rules, now, BlockKind.NoWithdrawals);
+
     private static SpendRefusal? Blocked(GamblingRules rules, DateTimeOffset now, params BlockKind[] kinds) =>
         rules.Blocks.FirstOrDefault(b => kinds.Contains(b.Kind) && b.IsActive(now)) is { } block
             ? new SpendRefusal(WalletFailure.AccountRestricted, block.Kind == BlockKind.Exclusion ? "account excluded" : $"account blocked: {block.Kind}")

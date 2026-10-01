@@ -6,9 +6,11 @@ namespace SwiftBets.Wallet.Domain;
 /// </summary>
 public sealed class Account
 {
-    public Account(Guid accountId, AccountKind kind, string currency, long available, long reserved, bool isBlacklisted)
+    public Account(Guid accountId, AccountKind kind, string currency, long available, long reserved, bool isBlacklisted, Guid? userId = null, long bonus = 0)
     {
         AccountId = accountId;
+        UserId = userId ?? accountId;
+        Bonus = bonus;
         Kind = kind;
         Currency = currency;
         Available = available;
@@ -18,6 +20,9 @@ public sealed class Account
 
     public Guid AccountId { get; }
 
+    /// <summary>The customer who owns a punter account; a user has one account per currency (ADR: currency accounts).</summary>
+    public Guid UserId { get; }
+
     public AccountKind Kind { get; }
 
     public string Currency { get; }
@@ -25,6 +30,9 @@ public sealed class Account
     public long Available { get; private set; }
 
     public long Reserved { get; private set; }
+
+    /// <summary>Promotional money: stakeable later, never withdrawable. Nothing credits it until promotions arrive.</summary>
+    public long Bonus { get; }
 
     public bool IsBlacklisted { get; }
 

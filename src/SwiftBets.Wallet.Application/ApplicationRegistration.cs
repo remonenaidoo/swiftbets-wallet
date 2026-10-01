@@ -14,6 +14,7 @@ public static class ApplicationRegistration
         services.AddScoped<ReserveFundsHandler>();
         services.AddScoped<SettleReservationHandler>();
         services.AddScoped<TransferHandler>();
+        services.AddScoped<AccountsHandler>();
         services.AddScoped<ReconcileLedgerHandler>();
         return services;
     }

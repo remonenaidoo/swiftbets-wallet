@@ -57,6 +57,24 @@ public sealed class MigratorTests(SqlServerFixture sql)
     }
 
     [Fact]
+    public async Task Currency_accounts_roll_back_while_customers_hold_one_account_and_refuse_otherwise()
+    {
+        var connectionString = await sql.CreateDatabaseAsync("mig_" + Guid.NewGuid().ToString("N")[..10]);
+        string[] args = [$"--ConnectionStrings:SbWallet={connectionString}", "--Migrator:SeedDemo=true"];
+        (await RunAsync(args)).ShouldBe(0);
+        await using var connection = new SqlConnection(connectionString);
+        await connection.ExecuteAsync("INSERT INTO wallet.Accounts (AccountId, Kind, Currency, UserId, CreatedAt) VALUES (NEWID(), 1, 'USD', '10000000-0000-0000-0000-000000000001', SYSUTCDATETIME())");
+        await connection.ExecuteAsync(Rollback("0008_bonus_and_withdrawals"));
+
+        await Should.ThrowAsync<SqlException>(() => connection.ExecuteAsync(Rollback("0007_currency_accounts")));
+
+        await connection.ExecuteAsync("DELETE FROM wallet.Accounts WHERE Currency = 'USD' AND Kind = 1");
+        await connection.ExecuteAsync(Rollback("0007_currency_accounts"));
+        (await connection.ExecuteScalarAsync<int>("SELECT COUNT(*) FROM sys.columns WHERE object_id = OBJECT_ID('wallet.Accounts') AND name IN ('UserId', 'Bonus')")).ShouldBe(0);
+        (await connection.ExecuteScalarAsync<int>("SELECT COUNT(*) FROM wallet.Accounts WHERE Currency = 'USD'")).ShouldBe(0);
+    }
+
+    [Fact]
     public async Task Removing_the_seed_keeps_demo_punters_that_have_been_used()
     {
         var connectionString = await sql.CreateDatabaseAsync("mig_" + Guid.NewGuid().ToString("N")[..10]);
@@ -69,6 +87,9 @@ public sealed class MigratorTests(SqlServerFixture sql)
         (await RunAsync([$"--ConnectionStrings:SbWallet={connectionString}"])).ShouldBe(0);
         (await PuntersAsync(connection)).ShouldBe(1);
 
+        // Rollbacks run newest first, so the later schema changes come off before the seed is restored.
+        await connection.ExecuteAsync(Rollback("0008_bonus_and_withdrawals"));
+        await connection.ExecuteAsync(Rollback("0007_currency_accounts"));
         await connection.ExecuteAsync(Rollback("0005_demo_seed_removed"));
         (await PuntersAsync(connection)).ShouldBe(5);
     }

@@ -10,7 +10,7 @@ namespace SwiftBets.Wallet.Api.Grpc;
 
 /// <summary>Internal money API for placement and payout. Every mutation is keyed; expected failures are typed replies, not status codes.</summary>
 [Authorize(Policy = Roles.Service)]
-public sealed class WalletGrpcService(ReserveFundsHandler reserve, SettleReservationHandler settle, TransferHandler transfer, IWalletStore store) : WalletBase
+public sealed class WalletGrpcService(ReserveFundsHandler reserve, SettleReservationHandler settle, TransferHandler transfer, AccountsHandler accounts, IWalletStore store) : WalletBase
 {
     public override async Task<ReservationReply> Reserve(ReserveRequest request, ServerCallContext context) =>
         WalletReplies.Reservation(await reserve.HandleAsync(Key(request.IdempotencyKey), Id(request.AccountId), Amount(request.Amount), request.Amount.Currency, request.Reference));
@@ -41,6 +41,33 @@ public sealed class WalletGrpcService(ReserveFundsHandler reserve, SettleReserva
             ? new ReservationReply { Failure = WalletReplies.Failure(Domain.WalletFailure.ReservationNotFound) }
             : new ReservationReply { Reservation = WalletReplies.Map(reservation) };
     }
+
+    public override async Task<PostingReply> Deposit(PostingRequest request, ServerCallContext context) =>
+        WalletReplies.Posting(await transfer.DepositAsync(Key(request.IdempotencyKey), Id(request.AccountId), Amount(request.Amount), request.Amount.Currency, request.Reference));
+
+    public override async Task<ReservationReply> HoldWithdrawal(ReserveRequest request, ServerCallContext context) =>
+        WalletReplies.Reservation(await reserve.HoldWithdrawalAsync(Key(request.IdempotencyKey), Id(request.AccountId), Amount(request.Amount), request.Amount.Currency, request.Reference));
+
+    public override async Task<ReservationReply> CompleteWithdrawal(ReservationCommand request, ServerCallContext context) =>
+        WalletReplies.Reservation(await settle.CompleteWithdrawalAsync(Key(request.IdempotencyKey), Id(request.ReservationId), context.CancellationToken));
+
+    public override async Task<BalanceReply> OpenAccount(OpenAccountRequest request, ServerCallContext context)
+    {
+        var (account, failure) = await accounts.OpenAsync(Id(request.UserId), Currency(request.Currency), context.CancellationToken);
+        return account is null
+            ? new BalanceReply { Failure = WalletReplies.Failure(failure!.Value) }
+            : new BalanceReply { Balance = WalletReplies.Balance(account) };
+    }
+
+    public override async Task<AccountsReply> ListAccounts(ListAccountsRequest request, ServerCallContext context)
+    {
+        var reply = new AccountsReply();
+        reply.Accounts.AddRange((await accounts.ListAsync(Id(request.UserId), context.CancellationToken)).Select(WalletReplies.Balance));
+        return reply;
+    }
+
+    private static string Currency(string currency) =>
+        currency is { Length: 3 } ? currency : throw new RpcException(new Status(StatusCode.InvalidArgument, "currency must be an ISO 4217 code."));
 
     private static string Key(string key) =>
         key is { Length: > 0 and <= 200 } ? key : throw new RpcException(new Status(StatusCode.InvalidArgument, "idempotency_key is required (max 200 chars)."));

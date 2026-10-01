@@ -4,4 +4,5 @@ public enum Bucket : byte
 {
     Available = 1,
     Reserved = 2,
+    Bonus = 3,
 }

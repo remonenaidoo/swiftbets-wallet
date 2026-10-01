@@ -14,8 +14,8 @@ INSERT INTO @postings (PostingId, AccountId) SELECT NEWID(), AccountId FROM @pun
 
 BEGIN TRANSACTION;
 
-INSERT INTO wallet.Accounts (AccountId, Kind, Currency, Available, CreatedAt)
-SELECT AccountId, 1, 'ZAR', 100000, @now FROM @punters;
+INSERT INTO wallet.Accounts (AccountId, Kind, Currency, Available, UserId, CreatedAt)
+SELECT AccountId, 1, 'ZAR', 100000, AccountId, @now FROM @punters;
 
 INSERT INTO wallet.Postings (PostingId, Kind, IdempotencyKey, AccountId, Amount, Reference, PostedAt)
 SELECT PostingId, 1, CONCAT('seed_', AccountId), AccountId, 100000, 'demo seed', @now FROM @postings;

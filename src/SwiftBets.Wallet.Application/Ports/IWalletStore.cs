@@ -14,4 +14,15 @@ public interface IWalletStore
 
     /// <summary>A blacklisted punter keeps their balance but receives no credits; payouts to them are dead-lettered.</summary>
     Task<bool> SetBlacklistedAsync(Guid accountId, bool isBlacklisted, CancellationToken cancellationToken);
+
+    Task<IReadOnlyList<Account>> ListAccountsAsync(Guid userId, CancellationToken cancellationToken);
+
+    /// <summary>Opens an empty punter account; null when the id or the (user, currency) pair is already taken.</summary>
+    Task<Account?> OpenAccountAsync(Guid accountId, Guid userId, string currency, CancellationToken cancellationToken);
+
+    /// <summary>The account's available-balance movements, newest first, before the <paramref name="before"/> sequence.</summary>
+    Task<IReadOnlyList<StatementLine>> StatementAsync(Guid accountId, long? before, int limit, CancellationToken cancellationToken);
 }
+
+/// <summary>One movement of an account's available balance and the balance after it.</summary>
+public sealed record StatementLine(long Sequence, Guid PostingId, PostingKind Kind, long Amount, long AvailableAfter, string Reference, DateTimeOffset PostedAt);

@@ -11,8 +11,8 @@ namespace SwiftBets.Wallet.Infrastructure.ResponsibleGambling;
 /// </summary>
 public sealed class CompactedGamblingRules(ICompactedState<RestrictionsChangedV1> state) : IGamblingRules
 {
-    public GamblingRules For(Guid accountId) =>
-        state.TryGet(accountId.ToString(), out var snapshot) ? Map(snapshot) : GamblingRules.None;
+    public GamblingRules For(Guid userId) =>
+        state.TryGet(userId.ToString(), out var snapshot) ? Map(snapshot) : GamblingRules.None;
 
     public static GamblingRules Map(RestrictionsChangedV1 snapshot) => new(
         [.. snapshot.Limits.Select(l => new SpendLimit(
@@ -20,7 +20,8 @@ public sealed class CompactedGamblingRules(ICompactedState<RestrictionsChangedV1
             l.Period switch { LimitPeriod.Day => SpendPeriod.Day, LimitPeriod.Week => SpendPeriod.Week, _ => SpendPeriod.Month },
             l.Amount.MinorUnits,
             l.PendingAmount?.MinorUnits,
-            l.PendingEffectiveAt))],
+            l.PendingEffectiveAt,
+            l.Amount.Currency))],
         [.. snapshot.Restrictions.Select(Block).OfType<SpendBlock>()]);
 
     private static SpendBlock? Block(Restriction restriction) =>

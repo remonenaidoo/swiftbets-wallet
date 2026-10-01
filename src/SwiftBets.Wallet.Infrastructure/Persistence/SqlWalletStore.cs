@@ -35,6 +35,33 @@ public sealed class SqlWalletStore(ISqlConnectionFactory connections, TimeProvid
         return (await connection.QuerySingleOrDefaultAsync<ReservationRow>(new CommandDefinition(Sql.Get("Wallet.FindReservationByKey"), new { IdempotencyKey = reserveIdempotencyKey }, cancellationToken: cancellationToken)))?.ToDomain();
     }
 
+    public async Task<IReadOnlyList<Account>> ListAccountsAsync(Guid userId, CancellationToken cancellationToken)
+    {
+        await using var connection = await connections.OpenAsync(cancellationToken);
+        return [.. (await connection.QueryAsync<AccountRow>(new CommandDefinition(Sql.Get("Wallet.ListAccounts"), new { UserId = userId }, cancellationToken: cancellationToken))).Select(r => r.ToDomain())];
+    }
+
+    public async Task<Account?> OpenAccountAsync(Guid accountId, Guid userId, string currency, CancellationToken cancellationToken)
+    {
+        await using var connection = await connections.OpenAsync(cancellationToken);
+        try
+        {
+            await connection.ExecuteAsync(new CommandDefinition(Sql.Get("Wallet.OpenAccount"), new { AccountId = accountId, UserId = userId, Currency = currency, Now = time.GetUtcNow() }, cancellationToken: cancellationToken));
+        }
+        catch (Microsoft.Data.SqlClient.SqlException ex) when (ex.Number is 2627 or 2601)
+        {
+            return null;
+        }
+
+        return await GetAccountAsync(accountId, cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<StatementLine>> StatementAsync(Guid accountId, long? before, int limit, CancellationToken cancellationToken)
+    {
+        await using var connection = await connections.OpenAsync(cancellationToken);
+        return [.. (await connection.QueryAsync<StatementRow>(new CommandDefinition(Sql.Get("Wallet.Statement"), new { AccountId = accountId, Before = before, Limit = limit }, cancellationToken: cancellationToken))).Select(r => r.ToLine())];
+    }
+
     public async Task<bool> SetBlacklistedAsync(Guid accountId, bool isBlacklisted, CancellationToken cancellationToken)
     {
         await using var connection = await connections.OpenAsync(cancellationToken);

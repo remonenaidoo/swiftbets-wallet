@@ -22,6 +22,7 @@ public static class InfrastructureRegistration
         services.AddSqlServerOutbox(configuration);
         services.AddFaultInjection(configuration);
         services.AddSingleton<IWalletStore, SqlWalletStore>();
+        services.AddSingleton<ILimitReachedNotifier, Messaging.KafkaLimitReachedNotifier>();
         services.AddSingleton<IReconciliationStore, SqlReconciliationStore>();
         services.AddCompactedState<RestrictionsChangedV1>(Topics.RestrictionsChanged);
         services.AddSingleton<IGamblingRules, CompactedGamblingRules>();

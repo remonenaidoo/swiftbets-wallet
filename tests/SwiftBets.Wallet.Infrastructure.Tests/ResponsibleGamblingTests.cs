@@ -1,3 +1,4 @@
+using SwiftBets.Wallet.Application.Ports;
 using Microsoft.Extensions.Time.Testing;
 using SwiftBets.BuildingBlocks.Persistence;
 using SwiftBets.BuildingBlocks.Testing;
@@ -81,6 +82,31 @@ public sealed class ResponsibleGamblingTests(SqlServerFixture sql)
         (stake.Failure, stake.Detail).ShouldBe((WalletFailure.AccountRestricted, "account excluded"));
         deposit.Failure.ShouldBe(WalletFailure.AccountRestricted);
         winnings.WasApplied.ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task A_deposit_refused_at_the_limit_tells_the_customer_once_and_one_within_it_says_nothing()
+    {
+        var store = await WalletAsync();
+        var notices = new RecordingNotifier();
+        var transfers = new TransferHandler(new PostingRunner(store, notices), new FixedRules(Limit(SpendKind.Deposit, SpendPeriod.Day, 5_000)), time);
+
+        await transfers.TopUpAsync("n1", Punter, 4_000, "ZAR", "n1");
+        await transfers.TopUpAsync("n2", Punter, 2_000, "ZAR", "n2");
+
+        var hit = notices.Hits.ShouldHaveSingleItem();
+        (hit.Refused, hit.Attempted, hit.Limit.Period).ShouldBe(("deposit", 2_000L, SpendPeriod.Day));
+    }
+
+    private sealed class RecordingNotifier : ILimitReachedNotifier
+    {
+        public List<LimitHit> Hits { get; } = [];
+
+        public Task NotifyAsync(LimitHit hit)
+        {
+            Hits.Add(hit);
+            return Task.CompletedTask;
+        }
     }
 
     [Fact]

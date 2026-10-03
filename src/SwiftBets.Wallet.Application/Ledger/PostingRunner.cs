@@ -10,7 +10,7 @@ namespace SwiftBets.Wallet.Application.Ledger;
 /// queue behind each other. Writes are never cancellable; a token honoured between debit and credit would leave money
 /// half-moved.
 /// </summary>
-public sealed class PostingRunner(IWalletStore store)
+public sealed class PostingRunner(IWalletStore store, ILimitReachedNotifier? limits = null)
 {
     public async Task<WalletOutcome> RunAsync(
         string idempotencyKey,
@@ -19,17 +19,26 @@ public sealed class PostingRunner(IWalletStore store)
         long amount,
         Func<IWalletTransaction, Task<(WalletFailure? Failure, Posting? Posting, IReadOnlyList<Account> Changed, Reservation? Reservation, bool IsNewReservation)>> apply)
     {
+        LimitHit? hit = null;
+        WalletOutcome outcome;
         try
         {
-            return await AttemptAsync(idempotencyKey, kind, accountId, amount, apply);
+            (outcome, hit) = await AttemptAsync(idempotencyKey, kind, accountId, amount, apply);
         }
         catch (DuplicateIdempotencyKeyException)
         {
-            return await AttemptAsync(idempotencyKey, kind, accountId, amount, apply);
+            (outcome, hit) = await AttemptAsync(idempotencyKey, kind, accountId, amount, apply);
         }
+
+        if (hit is not null && limits is not null)
+        {
+            await limits.NotifyAsync(hit);
+        }
+
+        return outcome;
     }
 
-    private async Task<WalletOutcome> AttemptAsync(
+    private async Task<(WalletOutcome Outcome, LimitHit? Hit)> AttemptAsync(
         string idempotencyKey,
         PostingKind kind,
         Guid accountId,
@@ -42,12 +51,12 @@ public sealed class PostingRunner(IWalletStore store)
         {
             if (existing.Kind != kind || existing.AccountId != accountId || existing.Amount != amount)
             {
-                return WalletOutcome.Failed(WalletFailure.IdempotencyConflict);
+                return (WalletOutcome.Failed(WalletFailure.IdempotencyConflict), null);
             }
 
             var account = await transaction.LockAccountAsync(existing.AccountId);
             var reservation = existing.ReservationId is { } id ? await transaction.LockReservationAsync(id) : null;
-            return new WalletOutcome(false, null, existing.PostingId, account, reservation);
+            return (new WalletOutcome(false, null, existing.PostingId, account, reservation), null);
         }
 
         (WalletFailure? Failure, Posting? Posting, IReadOnlyList<Account> Changed, Reservation? Reservation, bool IsNewReservation) result;
@@ -57,12 +66,12 @@ public sealed class PostingRunner(IWalletStore store)
         }
         catch (WalletRefusedException refused)
         {
-            return WalletOutcome.Failed(refused.Failure, refused.Message);
+            return (WalletOutcome.Failed(refused.Failure, refused.Message), refused.Limit);
         }
 
         if (result.Failure is { } failure)
         {
-            return WalletOutcome.Failed(failure);
+            return (WalletOutcome.Failed(failure), null);
         }
 
         var posting = result.Posting!;
@@ -73,6 +82,6 @@ public sealed class PostingRunner(IWalletStore store)
             result.Reservation,
             result.IsNewReservation);
         await transaction.CommitAsync();
-        return new WalletOutcome(true, null, posting.PostingId, result.Changed.FirstOrDefault(a => a.AccountId == accountId), result.Reservation);
+        return (new WalletOutcome(true, null, posting.PostingId, result.Changed.FirstOrDefault(a => a.AccountId == accountId), result.Reservation), null);
     }
 }

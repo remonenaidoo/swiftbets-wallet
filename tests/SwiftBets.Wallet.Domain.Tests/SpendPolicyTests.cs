@@ -22,11 +22,12 @@ public sealed class SpendPolicyTests
     [Fact]
     public void Stake_up_to_the_limit_passes_and_one_cent_more_is_refused()
     {
-        var rules = new GamblingRules([new SpendLimit(SpendKind.Stake, SpendPeriod.Day, 1_000, null, null)], []);
+        var limit = new SpendLimit(SpendKind.Stake, SpendPeriod.Day, 1_000, null, null);
+        var rules = new GamblingRules([limit], []);
         var counters = new SpendCounters(new SpendTotals(600, 0, 0), SpendTotals.Zero, SpendTotals.Zero);
 
         SpendPolicy.CheckStake(rules, counters, 400, Now).ShouldBeNull();
-        SpendPolicy.CheckStake(rules, counters, 401, Now).ShouldBe(new SpendRefusal(WalletFailure.LimitExceeded, "stake limit per day: 400 left"));
+        SpendPolicy.CheckStake(rules, counters, 401, Now).ShouldBe(new SpendRefusal(WalletFailure.LimitExceeded, "stake limit per day: 400 left", limit));
     }
 
     [Fact]

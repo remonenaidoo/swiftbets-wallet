@@ -68,7 +68,7 @@ public sealed class ReserveFundsHandler(PostingRunner runner, IGamblingRules rul
 
         if (SpendPolicy.CheckStake(accountRules, await transaction.GetSpendAsync(account.AccountId, now), amount, now) is { } refusal)
         {
-            throw new WalletRefusedException(refusal.Failure, refusal.Detail);
+            throw new WalletRefusedException(refusal.Failure, refusal.Detail, refusal.Limit is { } hit ? new LimitHit(account.UserId, hit, "stake", amount, account.Currency) : null);
         }
 
         await transaction.AddSpendAsync(account.AccountId, now, amount, 0, 0);

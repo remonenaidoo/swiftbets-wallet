@@ -92,7 +92,7 @@ public sealed class TransferHandler(PostingRunner runner, IGamblingRules rules, 
 
         if (SpendPolicy.CheckDeposit(rules.For(account.UserId).In(account.Currency), await transaction.GetSpendAsync(account.AccountId, now), amount, now) is { } refusal)
         {
-            throw new WalletRefusedException(refusal.Failure, refusal.Detail);
+            throw new WalletRefusedException(refusal.Failure, refusal.Detail, refusal.Limit is { } hit ? new LimitHit(account.UserId, hit, "deposit", amount, account.Currency) : null);
         }
 
         await transaction.AddSpendAsync(account.AccountId, now, 0, 0, amount);

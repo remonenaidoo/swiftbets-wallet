@@ -20,6 +20,13 @@ public static class ReconciliationEndpoints
         group.MapPost("/runs", async (ReconcileLedgerHandler handler, HttpContext context) =>
             Results.Ok(ReportResponse.From(await handler.HandleAsync(context.RequestAborted))));
 
+        // The reporting warehouse reconciles its daily figures against these; operators may read them too.
+        endpoints.MapGet("/reconciliation/daily-totals/{date}", async (string date, IReconciliationStore store, HttpContext context) =>
+            DateOnly.TryParseExact(date, "yyyy-MM-dd", out var day)
+                ? Results.Ok(await store.DayTotalsAsync(day, context.RequestAborted))
+                : Error.Validation("date_invalid", "Give the date as yyyy-MM-dd.").ToHttpResult(context))
+            .RequireAuthorization(Roles.OperatorOrService);
+
         return endpoints;
     }
 

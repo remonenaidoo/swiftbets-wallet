@@ -18,7 +18,13 @@ public interface IReconciliationStore
 
     Task<long> SumAllEntriesAsync(CancellationToken cancellationToken);
 
+    /// <summary>One UTC day of postings in minor units, for the reporting warehouse to reconcile against.</summary>
+    Task<LedgerDayTotals> DayTotalsAsync(DateOnly day, CancellationToken cancellationToken);
+
     Task SaveAsync(ReconciliationReport report, CancellationToken cancellationToken);
 
     Task<ReconciliationReport?> GetLatestAsync(CancellationToken cancellationToken);
 }
+
+/// <summary>Sports stakes captured, sports credits and debits (payouts and clawbacks), and casino money staked and returned.</summary>
+public sealed record LedgerDayTotals(long SportsStakes, long SportsCredits, long SportsDebits, long CasinoStaked, long CasinoReturned);

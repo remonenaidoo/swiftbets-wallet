@@ -28,6 +28,13 @@ public sealed class SqlReconciliationStore(ISqlConnectionFactory connections) : 
     public Task<long> SumAllEntriesAsync(CancellationToken cancellationToken) =>
         ScalarAsync<long>("Reconcile.SumAllEntries", cancellationToken);
 
+    public async Task<LedgerDayTotals> DayTotalsAsync(DateOnly day, CancellationToken cancellationToken)
+    {
+        var from = new DateTimeOffset(day.ToDateTime(TimeOnly.MinValue), TimeSpan.Zero);
+        await using var connection = await connections.OpenAsync(cancellationToken);
+        return await connection.QuerySingleAsync<LedgerDayTotals>(new CommandDefinition(Sql.Get("Reconcile.DayTotals"), new { From = from, To = from.AddDays(1) }, cancellationToken: cancellationToken));
+    }
+
     public async Task SaveAsync(ReconciliationReport report, CancellationToken cancellationToken)
     {
         await using var connection = await connections.OpenAsync(cancellationToken);
